@@ -171,12 +171,16 @@ var jsPsychManualPlugin = (function () {
         cancelAnimationFrame(timerID);
         const rt = Math.round(performance.now() - startTime);
 
+        const pts    = success ? 10 : 0;
+        const ptsTag = success
+          ? `<span class="fb-points">+${pts} pts</span>`
+          : `<span class="fb-points fb-points-zero">+0 pts</span>`;
         const fbDiv = display_element.querySelector('#manual-feedback');
         if (fbDiv) {
           fbDiv.className = `mc-feedback ${success ? 'fb-correct' : 'fb-wrong'}`;
           fbDiv.innerHTML = success
-            ? '<strong>Excellent!</strong> Your piece is now aimed at the Secret Stone.'
-            : "<strong>Time\'s up!</strong> Try to spot which piece can reach the Stone\'s line.";
+            ? `${ptsTag} <strong>Excellent!</strong> Your piece is aimed at the Secret Stone.`
+            : `${ptsTag} <strong>Time\'s up!</strong> Try to spot which piece can reach the Stone\'s line.`;
         }
 
         setTimeout(() => {

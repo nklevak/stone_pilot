@@ -424,6 +424,30 @@ html, body {
 /* ── VAS (survey-likert) scoped ───────────────────────────────── */
 .jspsych-survey-likert-opts { margin-top: 0.5rem; }
 
+/* ── Points badge in feedback ─────────────────────────────────── */
+.fb-points {
+  display: inline-block;
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  background: #3a9a3a;
+  padding: 0.15rem 0.6rem;
+  border-radius: 4px;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+.fb-points-zero {
+  background: #888;
+}
+
+/* ── VAS slider overrides ─────────────────────────────────────── */
+.jspsych-html-slider-response-container {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    UTILITY
    ═══════════════════════════════════════════════════════════════ */

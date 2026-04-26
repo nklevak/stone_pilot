@@ -157,12 +157,16 @@ var jsPsychMCPlugin = (function () {
         const correct = !expired && selectedValue === puz.answer;
 
         // Show feedback
+        const pts    = correct ? 10 : 0;
+        const ptsTag = correct
+          ? `<span class="fb-points">+${pts} pts</span>`
+          : `<span class="fb-points fb-points-zero">+0 pts</span>`;
         const fbDiv  = display_element.querySelector('#mc-feedback');
         const fbText = expired
-          ? `<strong>Time's up!</strong> The correct answer was: <em>${labelFor(puz.answer)}</em>.<br>${fbMap[puz.answer]}`
+          ? `${ptsTag} <strong>Time's up!</strong> The correct answer was: <em>${labelFor(puz.answer)}</em>.<br>${fbMap[puz.answer]}`
           : correct
-            ? `<strong>Correct!</strong> ${fbMap[puz.answer]}`
-            : `<strong>Not quite.</strong> The correct answer was: <em>${labelFor(puz.answer)}</em>.<br>${fbMap[puz.answer]}`;
+            ? `${ptsTag} <strong>Correct!</strong> ${fbMap[puz.answer]}`
+            : `${ptsTag} <strong>Not quite.</strong> The correct answer was: <em>${labelFor(puz.answer)}</em>.<br>${fbMap[puz.answer]}`;
 
         fbDiv.innerHTML  = fbText;
         fbDiv.className  = `mc-feedback ${correct ? 'fb-correct' : 'fb-wrong'}`;

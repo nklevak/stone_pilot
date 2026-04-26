@@ -272,31 +272,26 @@ const phase3Instructions = {
 // BREAK SYSTEM
 // ══════════════════════════════════════════════════════════════════════════════
 
-// VAS fatigue rating (shown before break offer)
+// VAS fatigue rating (shown before break offer) — 0–100 slider, starts at 50
 function makeVAS() {
   return {
-    type: jsPsychSurveyLikert,
-    preamble: `<div class="break-screen">
-      <h2>Quick Check-In</h2>
-      <p>Before continuing, please rate how you are feeling right now.</p>
-    </div>`,
-    questions: [
-      {
-        prompt: 'How mentally fatigued are you feeling?',
-        name: 'fatigue',
-        labels: ['Not at all fatigued', '', '', '', '', '', 'Extremely fatigued'],
-        required: true,
-      },
-      {
-        prompt: 'How much mental effort has this task been requiring?',
-        name: 'effort',
-        labels: ['Very little effort', '', '', '', '', '', 'Extreme effort'],
-        required: true,
-      },
-    ],
+    type: jsPsychHtmlSliderResponse,
+    stimulus: `
+      <div class="break-screen" style="padding-bottom:0.5rem">
+        <h2>Quick Check-In</h2>
+        <p>How mentally fatigued are you feeling right now?</p>
+      </div>`,
+    labels: ['Not at all fatigued', 'Extremely fatigued'],
+    min: 0,
+    max: 100,
+    start: 50,
+    step: 1,
+    slider_width: 400,
+    require_movement: false,
     button_label: 'Continue',
     data: { phase: 'vas' },
     on_finish: (data) => {
+      data.fatigue_rating     = data.response;
       data.trial_index_at_vas = SESSION.overallTrialIndex;
     },
   };
