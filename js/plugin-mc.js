@@ -72,12 +72,25 @@ var jsPsychMCPlugin = (function () {
         ? 'The <span class="highlight-from">gold square</span> marks a position. The <span class="highlight-target">? square</span> marks a destination.<br>Which of your pieces can move from the gold square to the ? square?'
         : 'The <span class="highlight-from">gold square</span> marks a position on the board.<br>Which of your pieces could <strong>aim at</strong> the Secret Stone from that square?';
 
+      // ── Piece icon strip for an answer value ─────────────────────────────────
+      function iconsFor(value) {
+        if (value === 'none') return '';
+        const codes = value === 'WSG' ? ['W','S','G']
+                    : value === 'WS'  ? ['W','S']
+                    : value === 'WG'  ? ['W','G']
+                    : [value];            // 'W', 'S', or 'G' alone
+        return `<span class="mc-icons">${codes.map(c =>
+          `<span class="mc-icon" title="${Pieces.NAMES[c]}">${Pieces.svgFor(c)}</span>`
+        ).join('')}</span>`;
+      }
+
       // ── Radio options HTML ────────────────────────────────────────────────────
       function buildOptionsHTML() {
         return opts.map((o, i) =>
           `<label class="mc-option" data-value="${o.value}">
              <input type="radio" name="mc_answer" value="${o.value}" id="mc_opt_${i}">
-             <span>${o.label}</span>
+             ${iconsFor(o.value)}
+             <span class="mc-option-label">${o.label}</span>
            </label>`
         ).join('');
       }

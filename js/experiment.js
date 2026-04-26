@@ -62,8 +62,12 @@ const consent = {
          <strong>25–30 minutes</strong>.</p>
       <p><strong>What you will do:</strong> You will solve a series of spatial puzzles involving
          fantasy-themed pieces on a small game board.</p>
-      <p><strong>Compensation:</strong> You will receive a base payment plus a bonus based on
-         how many puzzles you solve correctly.</p>
+      <p><strong>Compensation:</strong> You will receive a base payment plus a performance bonus
+         of <strong>up to $2.00</strong>. You earn <strong>+10 points</strong> for each correct answer
+         and <strong>+0 points</strong> for incorrect or timed-out answers. Taking a break
+         costs <strong>4 points</strong> — but your score will never drop below zero, so breaks
+         are always free once you reach 0.
+         Your final point total determines your bonus.</p>
       <p><strong>Confidentiality:</strong> Your data will be anonymized and stored securely.
          No personally identifying information will be collected.</p>
       <p><strong>Voluntary participation:</strong> You may withdraw at any time without penalty.</p>
@@ -207,8 +211,11 @@ const phase1Instructions = {
       </ul>
       <p>Your task: <strong>select which of your pieces could move from the gold square
          to the ? square</strong> in a single move.</p>
-      <p>You will have <strong>30 seconds</strong> per question. Answer as accurately as you can —
-         you earn <strong>10 points</strong> for each correct answer.</p>
+      <p>You have <strong>30 seconds</strong> per question.
+         Correct answers earn <strong>+10 points</strong>.
+         Incorrect or timed-out answers earn <strong>+0 points</strong>.
+         Breaks cost <strong>4 points</strong> (free if your score is already 0).
+         Your total points become a bonus of <strong>up to $2.00</strong>.</p>
     </div>`,
   ],
   show_clickable_nav: true,
@@ -234,7 +241,8 @@ const phase2Instructions = {
          in a straight line (for Wizard/Scout) or if the Stone is one step away (for Guard),
          with nothing blocking the path.</p>
       <p>You have <strong>30 seconds</strong> per question.
-         Correct answers earn <strong>10 points</strong>.</p>
+         Correct answers earn <strong>+10 points</strong>.
+         Incorrect or timed-out answers earn <strong>+0 points</strong>.</p>
     </div>`,
   ],
   show_clickable_nav: true,
@@ -258,7 +266,7 @@ const phase3Instructions = {
          to move it there. Your goal: get at least one piece to <strong>aim at the Secret Stone</strong>.</p>
       <p>You can make as many moves as you like before the timer runs out.
          The Stone will glow red once a piece is aimed at it — that's when the puzzle is solved!</p>
-      <p>Each solved puzzle earns <strong>10 points</strong>. You have <strong>45 seconds</strong> per board.</p>
+      <p>Each solved puzzle earns <strong>+10 points</strong>. Unsolved boards earn <strong>+0 points</strong>. You have <strong>45 seconds</strong> per board.</p>
     </div>`,
   ],
   show_clickable_nav: true,
@@ -301,50 +309,79 @@ function makeVAS() {
 function makeBreakOffer() {
   return {
     type: jsPsychHtmlButtonResponse,
-    stimulus: () => `
-      <div class="break-screen">
-        <h2>Break Opportunity</h2>
-        <p>You have completed <strong>${SESSION.overallTrialIndex}</strong> puzzles so far.</p>
-        <p>Would you like to take a <strong>40-second break</strong>?</p>
-        <p class="break-cost">Taking a break costs <strong>4 points</strong>.</p>
-        <p class="break-balance">Your current balance: <strong>${SESSION.points} pts</strong></p>
-      </div>`,
-    choices: ['Take Break (−4 pts)', 'Keep Going'],
+    stimulus: () => {
+      const cost     = Math.min(4, SESSION.points);   // 0 if already at 0
+      const costLine = cost > 0
+        ? `<p class="break-cost">Taking a break costs <strong>${cost} point${cost > 1 ? 's' : ''}</strong>.</p>`
+        : `<p class="break-cost break-free">Break is <strong>free</strong> — your score is already at 0.</p>`;
+      const btnLabel = cost > 0 ? `Take Break (−${cost} pts)` : 'Take Break (free)';
+      // Store cost so on_finish can read it
+      makeBreakOffer._pendingCost = cost;
+      return `
+        <div class="break-screen">
+          <h2>Break Opportunity</h2>
+          <p>You have completed <strong>${SESSION.overallTrialIndex}</strong> puzzles so far.</p>
+          <p>Would you like to take a <strong>40-second break</strong>?</p>
+          ${costLine}
+          <p class="break-balance">Your current score: <strong>${SESSION.points} pts</strong></p>
+        </div>`;
+    },
+    choices: () => {
+      const cost = Math.min(4, SESSION.points);
+      return [cost > 0 ? `Take Break (−${cost} pts)` : 'Take Break (free)', 'Keep Going'];
+    },
     data: { phase: 'break_offer' },
     on_finish: (data) => {
       const chosen = data.response === 0;
       data.break_chosen = chosen;
       SESSION._lastBreakChosen = chosen;
       if (chosen) {
-        SESSION.points -= 4;   // deduct here; note POINTS.break is -4
+        const cost = Math.min(4, SESSION.points);
+        SESSION.points = Math.max(0, SESSION.points - cost);
         SESSION.breaksTaken++;
+        data.break_cost = cost;
       }
     },
   };
 }
 
-// Break countdown
+// Break countdown — self-paced with 10 s minimum
+const BREAK_MIN_MS = 10_000;
+
 function makeBreakCountdown() {
   return {
-    type: jsPsychHtmlKeyboardResponse,
+    type: jsPsychHtmlButtonResponse,
     stimulus: `
       <div class="break-screen">
         <h2>Break Time</h2>
-        <p>Relax for 40 seconds. The study will resume automatically.</p>
-        <div class="break-timer" id="break-timer">40</div>
-        <p class="break-sub">seconds remaining</p>
+        <p>Take as long as you need. A <strong>Continue</strong> button will appear
+           after <strong>10 seconds</strong>.</p>
+        <div class="break-timer" id="break-timer">10</div>
+        <p class="break-sub" id="break-sub">seconds until you can continue</p>
       </div>`,
-    choices: 'NO_KEYS',
-    trial_duration: BREAK_DURATION_MS,
+    choices: ['I\'m ready to continue'],
+    button_html: '<button class="ss-btn" id="break-continue-btn" disabled>%choice%</button>',
     data: { phase: 'break' },
     on_load: () => {
-      let secs = Math.ceil(BREAK_DURATION_MS / 1000);
-      const el = document.querySelector('#break-timer');
+      const timerEl = document.querySelector('#break-timer');
+      const subEl   = document.querySelector('#break-sub');
+      const btn     = document.querySelector('#break-continue-btn');
+      const start   = performance.now();
+
       const iv = setInterval(() => {
-        secs--;
-        if (el) el.textContent = Math.max(0, secs);
-        if (secs <= 0) clearInterval(iv);
-      }, 1000);
+        const elapsed = performance.now() - start;
+        const remaining = Math.max(0, Math.ceil((BREAK_MIN_MS - elapsed) / 1000));
+        if (timerEl) timerEl.textContent = remaining;
+        if (elapsed >= BREAK_MIN_MS) {
+          clearInterval(iv);
+          if (btn)    { btn.disabled = false; btn.classList.add('break-btn-ready'); }
+          if (timerEl) timerEl.textContent = '✓';
+          if (subEl)   subEl.textContent   = 'Ready when you are!';
+        }
+      }, 250);
+    },
+    on_finish: (data) => {
+      data.break_duration_ms = data.rt;  // jsPsych records RT from stimulus onset
     },
   };
 }
@@ -458,28 +495,29 @@ function makePhaseBridge(title, body) {
 // ══════════════════════════════════════════════════════════════════════════════
 // SESSION EQUALIZER
 // ══════════════════════════════════════════════════════════════════════════════
+// Equalizer uses BREAK_MIN_MS × unused breaks so session lengths stay comparable
 const equalizerConditional = {
   timeline: [{
     type: jsPsychHtmlKeyboardResponse,
     stimulus: () => {
       const unused = MAX_BREAKS - SESSION.breaksTaken;
-      const secs   = Math.round(unused * BREAK_DURATION_MS / 1000);
+      const secs   = Math.round(unused * BREAK_MIN_MS / 1000);
       return `
         <div class="break-screen">
-          <h2>Session Complete!</h2>
+          <h2>Almost Done!</h2>
           <p>You used <strong>${SESSION.breaksTaken}</strong> of ${MAX_BREAKS} available breaks.</p>
-          <p>To keep the session length fair for everyone, please wait
-             <strong>${secs} seconds</strong> before seeing your final score.</p>
+          <p>Please wait <strong>${secs} seconds</strong> before seeing your final score —
+             this keeps the session length fair for everyone.</p>
           <div class="break-timer" id="eq-timer">${secs}</div>
           <p class="break-sub">seconds remaining</p>
         </div>`;
     },
     choices: 'NO_KEYS',
-    trial_duration: () => (MAX_BREAKS - SESSION.breaksTaken) * BREAK_DURATION_MS,
+    trial_duration: () => (MAX_BREAKS - SESSION.breaksTaken) * BREAK_MIN_MS,
     data: { phase: 'equalizer' },
     on_load: () => {
       const unused = MAX_BREAKS - SESSION.breaksTaken;
-      let secs = Math.round(unused * BREAK_DURATION_MS / 1000);
+      let secs = Math.round(unused * BREAK_MIN_MS / 1000);
       const el = document.querySelector('#eq-timer');
       const iv = setInterval(() => {
         secs--;
